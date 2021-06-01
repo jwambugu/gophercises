@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"strings"
+	"unicode"
 )
 
 // There is a sequence of words in CamelCase as a string of letters, , having the following properties:
@@ -28,11 +28,14 @@ func main() {
 
 	answer := 1
 	for _, ch := range input {
-		str := string(ch)
-
-		if strings.ToUpper(str) == str {
+		if unicode.IsUpper(ch) {
 			answer++
 		}
+		//str := string(ch)
+		//
+		//if strings.ToUpper(str) == str {
+		//	answer++
+		//}
 
 		//min, max := 'A', 'Z'
 		//if ch >= min && ch <= max {
