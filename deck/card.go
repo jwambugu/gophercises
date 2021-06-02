@@ -150,3 +150,16 @@ func Filter(filter func(card Card) bool) func([]Card) []Card {
 		return newCards
 	}
 }
+
+// Deck creates n number of decks
+func Deck(n int) func([]Card) []Card {
+	return func(cards []Card) []Card {
+		var deck []Card
+
+		for i := 0; i < n; i++ {
+			deck = append(deck, cards...)
+		}
+
+		return deck
+	}
+}

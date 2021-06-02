@@ -85,3 +85,14 @@ func TestFilter(t *testing.T) {
 		}
 	}
 }
+
+func TestDeck(t *testing.T) {
+	cards := New(Deck(3))
+
+	// 13 ranks * 4 suits * 3 decks
+	expected := 13 * 4 * 3
+
+	if len(cards) != expected {
+		t.Errorf("expected %d cards, got %d", expected, len(cards))
+	}
+}
