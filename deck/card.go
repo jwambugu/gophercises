@@ -47,6 +47,7 @@ type Card struct {
 }
 
 var suits = [...]Suit{Spade, Diamond, Club, Heart}
+var shuffleRand = rand.New(rand.NewSource(time.Now().Unix()))
 
 const (
 	minRank = Ace
@@ -113,8 +114,7 @@ func Sort(less func(cards []Card) func(i, j int) bool) func([]Card) []Card {
 func Shuffle(cards []Card) []Card {
 	shuffledCards := make([]Card, len(cards))
 
-	r := rand.New(rand.NewSource(time.Now().Unix()))
-	perm := r.Perm(len(cards))
+	perm := shuffleRand.Perm(len(cards))
 
 	for i, j := range perm {
 		shuffledCards[i] = cards[j]

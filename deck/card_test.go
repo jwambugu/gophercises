@@ -2,6 +2,7 @@ package deck
 
 import (
 	"fmt"
+	"math/rand"
 	"testing"
 )
 
@@ -53,6 +54,27 @@ func TestSort(t *testing.T) {
 	if cards[0] != firstCard {
 		t.Errorf("expected '%v' as first card, got '%v'", firstCard, cards[0])
 	}
+}
+
+func TestShuffle(t *testing.T) {
+	// [40 35 ...]
+	shuffleRand = rand.New(rand.NewSource(0))
+
+	originalDeck := New()
+	firstCard := originalDeck[40]
+	secondCard := originalDeck[35]
+
+	shuffledCards := New(Shuffle)
+
+	if shuffledCards[0] != firstCard {
+		t.Errorf("expected the first card to be %q , got %q", firstCard, shuffledCards[0])
+	}
+
+	if shuffledCards[1] != secondCard {
+		t.Errorf("expected the first card to be %q , got %q", firstCard, shuffledCards[1])
+
+	}
+
 }
 
 func TestJokers(t *testing.T) {
