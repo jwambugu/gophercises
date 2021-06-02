@@ -4,7 +4,9 @@ package deck
 
 import (
 	"fmt"
+	"math/rand"
 	"sort"
+	"time"
 )
 
 // Suit is one of the categories into which the cards of a deck are divided.
@@ -105,4 +107,18 @@ func Sort(less func(cards []Card) func(i, j int) bool) func([]Card) []Card {
 		sort.Slice(cards, less(cards))
 		return cards
 	}
+}
+
+// Shuffle shuffles a deck in random order
+func Shuffle(cards []Card) []Card {
+	shuffledCards := make([]Card, len(cards))
+
+	r := rand.New(rand.NewSource(time.Now().Unix()))
+	perm := r.Perm(len(cards))
+
+	for i, j := range perm {
+		shuffledCards[i] = cards[j]
+	}
+
+	return shuffledCards
 }
