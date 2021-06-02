@@ -2,7 +2,10 @@
 
 package deck
 
-import "fmt"
+import (
+	"fmt"
+	"sort"
+)
 
 // Suit is one of the categories into which the cards of a deck are divided.
 type Suit uint8
@@ -58,7 +61,7 @@ func (c Card) String() string {
 }
 
 // New creates a new deck of cards
-func New() []Card {
+func New(opts ...func([]Card) []Card) []Card {
 	var cards []Card
 
 	for _, suit := range suits {
@@ -70,5 +73,36 @@ func New() []Card {
 		}
 	}
 
+	for _, opt := range opts {
+		cards = opt(cards)
+	}
+
 	return cards
+}
+
+// absoluteRank ensures the minimum rank a card can get is 13 for other cards except Spade
+// which will have a minimum rank of 1
+func absoluteRank(c Card) int {
+	return int(c.Suit) * int(maxRank+c.Rank)
+}
+
+// Less sorts the cards from the min absolute rank to the max absolute rank
+func Less(cards []Card) func(i, j int) bool {
+	return func(i, j int) bool {
+		return absoluteRank(cards[i]) < absoluteRank(cards[j])
+	}
+}
+
+// DefaultSort sorts the decks as if they were new
+func DefaultSort(cards []Card) []Card {
+	sort.Slice(cards, Less(cards))
+	return cards
+}
+
+// Sort takes in a custom sorting function and returns the sorted cards
+func Sort(less func(cards []Card) func(i, j int) bool) func([]Card) []Card {
+	return func(cards []Card) []Card {
+		sort.Slice(cards, less(cards))
+		return cards
+	}
 }
