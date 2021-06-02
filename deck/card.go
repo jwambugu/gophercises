@@ -135,3 +135,18 @@ func Jokers(n int) func([]Card) []Card {
 		return cards
 	}
 }
+
+// Filter creates a new deck without the cards passed in the filter function
+func Filter(filter func(card Card) bool) func([]Card) []Card {
+	return func(cards []Card) []Card {
+		var newCards []Card
+
+		for _, c := range cards {
+			if !filter(c) {
+				newCards = append(newCards, c)
+			}
+		}
+
+		return newCards
+	}
+}
