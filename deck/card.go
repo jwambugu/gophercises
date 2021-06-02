@@ -122,3 +122,16 @@ func Shuffle(cards []Card) []Card {
 
 	return shuffledCards
 }
+
+// Jokers adds n number of Joker to the deck
+func Jokers(n int) func([]Card) []Card {
+	return func(cards []Card) []Card {
+		for i := 0; i < n; i++ {
+			cards = append(cards, Card{
+				Suit: Joker,
+				Rank: Rank(i),
+			})
+		}
+		return cards
+	}
+}
