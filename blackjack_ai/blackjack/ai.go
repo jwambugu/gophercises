@@ -5,39 +5,54 @@ import (
 	"github.com/jwambugu/gophercises/deck"
 )
 
-type Move func(GameState) GameState
-
 type AI interface {
-	Results(hand, dealer []deck.Card)
-	Play(hand [][]deck.Card, dealer deck.Card) Move
+	Results(hand [][]deck.Card, dealer []deck.Card)
+	Play(hand []deck.Card, dealer deck.Card) Move
 	Bet() int
 }
 
-type HumanAI struct {
+type humanAI struct {
 }
 
-type GameState struct {
+func HumanAI() AI {
+	return humanAI{}
 }
 
-func Hit(gs GameState) GameState {
-	return gs
+type dealerAI struct {
 }
 
-func Stand(gs GameState) GameState {
-	return gs
-}
-
-func (ai *HumanAI) Bet() int {
+func (ai *dealerAI) Bet() int {
 	return 1
 }
 
-func (ai *HumanAI) Results(hand, dealer []deck.Card) {
+func (ai humanAI) Bet() int {
+	return 1
+}
+
+func (ai *dealerAI) Results(hand [][]deck.Card, dealer []deck.Card) {
+	// DO NOTHING
+}
+
+func (ai humanAI) Results(hand [][]deck.Card, dealer []deck.Card) {
 	fmt.Println("==FINAL HANDS==")
 	fmt.Println("Player:", hand)
 	fmt.Println("Dealer:", dealer)
+	fmt.Println()
 }
 
-func (ai *HumanAI) Play(hand [][]deck.Card, dealer deck.Card) Move {
+func (ai *dealerAI) Play(hand []deck.Card, dealer deck.Card) Move {
+	// If dealer score <= 16, hit || If dealer has a sort 17, hit.
+	// Soft 17 is when an ace as 11 and the score is 17
+	dealerScore := Score(hand...)
+
+	if dealerScore <= 16 || (dealerScore == 17 && Soft(hand...)) {
+		return MoveHit
+	}
+
+	return MoveStand
+}
+
+func (ai humanAI) Play(hand []deck.Card, dealer deck.Card) Move {
 	for {
 		fmt.Println("Player:", hand)
 		fmt.Println("Dealer:", dealer)
@@ -49,9 +64,9 @@ func (ai *HumanAI) Play(hand [][]deck.Card, dealer deck.Card) Move {
 
 		switch input {
 		case "h":
-			return Hit
+			return MoveHit
 		case "s":
-			return Stand
+			return MoveStand
 		default:
 			fmt.Println("Invalid option: ", input)
 		}
