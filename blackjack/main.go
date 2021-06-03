@@ -198,7 +198,8 @@ func main() {
 		}
 
 		for gs.State == StateDealerTurn {
-			// If dealer score <= 16, hit || If dealer has a sort 17, hit. Soft 17 is when an ace as 11 and the score is 17
+			// If dealer score <= 16, hit || If dealer has a sort 17, hit.
+			// Soft 17 is when an ace as 11 and the score is 17
 			if gs.Dealer.Score() <= 16 || (gs.Dealer.Score() == 17 && gs.Dealer.MinScore() != 17) {
 				gs = Hit(gs)
 			} else {
