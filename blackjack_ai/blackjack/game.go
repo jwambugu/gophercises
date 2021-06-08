@@ -8,19 +8,31 @@ import (
 type state int8
 
 const (
-	statePlayerTurn state = iota
+	stateBetting state = iota
+	statePlayerTurn
 	stateDealerTurn
 	stateHandOver
 )
 
-type Game struct {
-	deck     []deck.Card
-	state    state
-	player   []deck.Card
-	dealer   []deck.Card
-	dealerAI AI
-	balance  int
-}
+type (
+	Options struct {
+		Decks           int
+		Hands           int
+		BlackjackPayout float64
+	}
+
+	Game struct {
+		deck            []deck.Card
+		state           state
+		player          []deck.Card
+		dealer          []deck.Card
+		dealerAI        AI
+		balance         int
+		noOfDecks       int
+		noOfHands       int
+		blackjackPayout float64
+	}
+)
 
 type Move func(*Game)
 
@@ -146,9 +158,15 @@ func endHand(g *Game, ai AI) {
 }
 
 func (g *Game) Play(ai AI) int {
-	g.deck = deck.New(deck.Deck(3), deck.Shuffle)
+	g.deck = nil
 
-	for i := 0; i < 2; i++ {
+	minCardsCount := (52 * g.noOfDecks) / 3
+
+	for i := 0; i < g.noOfHands; i++ {
+		if len(g.deck) < minCardsCount {
+			g.deck = deck.New(deck.Deck(g.noOfDecks), deck.Shuffle)
+		}
+
 		deal(g)
 
 		for g.state == statePlayerTurn {
@@ -173,10 +191,28 @@ func (g *Game) Play(ai AI) int {
 	return g.balance
 }
 
-func New() Game {
-	return Game{
+func New(opts Options) Game {
+	g := Game{
 		state:    statePlayerTurn,
 		dealerAI: &dealerAI{},
 		balance:  0,
 	}
+
+	if opts.Decks == 0 {
+		opts.Decks = 3
+	}
+
+	if opts.Hands == 0 {
+		opts.Hands = 100
+	}
+
+	if opts.BlackjackPayout == 0 {
+		opts.BlackjackPayout = 1.5
+	}
+
+	g.noOfHands = opts.Hands
+	g.noOfDecks = opts.Decks
+	g.blackjackPayout = opts.BlackjackPayout
+
+	return g
 }
