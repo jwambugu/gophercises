@@ -8,8 +8,7 @@ import (
 type state int8
 
 const (
-	stateBetting state = iota
-	statePlayerTurn
+	statePlayerTurn state = iota
 	stateDealerTurn
 	stateHandOver
 )
@@ -31,6 +30,7 @@ type (
 		noOfDecks       int
 		noOfHands       int
 		blackjackPayout float64
+		playerBet       int
 	}
 )
 
@@ -132,29 +132,35 @@ func Score(hand ...deck.Card) int {
 func endHand(g *Game, ai AI) {
 	playerScore, dealerScore := Score(g.player...), Score(g.dealer...)
 
+	winnings := g.playerBet
 	// TODO FIGURE UOU WINNINGS AND ADD/SUBTRACT THEM
 	switch {
 	case playerScore > 21:
 		fmt.Println("You busted!")
-		g.balance--
+		winnings = -winnings
 	case dealerScore > 21:
 		fmt.Println("Dealer busted!")
-		g.balance++
 	case playerScore > dealerScore:
 		fmt.Println("You win!")
-		g.balance++
 	case dealerScore > playerScore:
 		fmt.Println("You lose!")
-		g.balance--
+		winnings = -winnings
 	case dealerScore == playerScore:
 		fmt.Println("Draw!")
+		winnings = 0
 	}
 
 	fmt.Println()
 	ai.Results([][]deck.Card{g.player}, g.dealer)
 
+	g.balance += winnings
 	g.player = nil
 	g.dealer = nil
+}
+
+func bet(g *Game, ai AI, shuffled bool) {
+	bet := ai.Bet(shuffled)
+	g.playerBet = bet
 }
 
 func (g *Game) Play(ai AI) int {
@@ -163,10 +169,15 @@ func (g *Game) Play(ai AI) int {
 	minCardsCount := (52 * g.noOfDecks) / 3
 
 	for i := 0; i < g.noOfHands; i++ {
+		shuffled := false
+
 		if len(g.deck) < minCardsCount {
 			g.deck = deck.New(deck.Deck(g.noOfDecks), deck.Shuffle)
+
+			shuffled = true
 		}
 
+		bet(g, ai, shuffled)
 		deal(g)
 
 		for g.state == statePlayerTurn {

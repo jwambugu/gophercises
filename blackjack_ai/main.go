@@ -6,7 +6,11 @@ import (
 )
 
 func main() {
-	game := blackjack.New(blackjack.Options{})
+	game := blackjack.New(blackjack.Options{
+		Hands:           2,
+		Decks:           3,
+		BlackjackPayout: 1.5,
+	})
 
 	winnings := game.Play(blackjack.HumanAI())
 
