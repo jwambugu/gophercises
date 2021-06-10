@@ -1,7 +1,6 @@
 package blackjack
 
 import (
-	"fmt"
 	"github.com/jwambugu/gophercises/deck"
 )
 
@@ -132,25 +131,27 @@ func Score(hand ...deck.Card) int {
 func endHand(g *Game, ai AI) {
 	playerScore, dealerScore := Score(g.player...), Score(g.dealer...)
 
+	playerBlackjack, dealerBlackjack := BlackJack(g.player...), BlackJack(g.dealer...)
 	winnings := g.playerBet
-	// TODO FIGURE UOU WINNINGS AND ADD/SUBTRACT THEM
 	switch {
+	case playerBlackjack && dealerBlackjack:
+		winnings = 0
+	case dealerBlackjack:
+		winnings = -winnings
+	case playerBlackjack:
+		winnings = int(float64(winnings) * g.blackjackPayout)
 	case playerScore > 21:
-		fmt.Println("You busted!")
 		winnings = -winnings
 	case dealerScore > 21:
-		fmt.Println("Dealer busted!")
+		// wins
 	case playerScore > dealerScore:
-		fmt.Println("You win!")
+		// wins
 	case dealerScore > playerScore:
-		fmt.Println("You lose!")
 		winnings = -winnings
 	case dealerScore == playerScore:
-		fmt.Println("Draw!")
 		winnings = 0
 	}
 
-	fmt.Println()
 	ai.Results([][]deck.Card{g.player}, g.dealer)
 
 	g.balance += winnings
@@ -161,6 +162,11 @@ func endHand(g *Game, ai AI) {
 func bet(g *Game, ai AI, shuffled bool) {
 	bet := ai.Bet(shuffled)
 	g.playerBet = bet
+}
+
+// BlackJack returns true if a hand is a blackjack
+func BlackJack(hand ...deck.Card) bool {
+	return len(hand) == 2 && Score(hand...) == 21
 }
 
 func (g *Game) Play(ai AI) int {
@@ -179,6 +185,11 @@ func (g *Game) Play(ai AI) int {
 
 		bet(g, ai, shuffled)
 		deal(g)
+
+		if BlackJack(g.dealer...) {
+			endHand(g, ai)
+			continue
+		}
 
 		for g.state == statePlayerTurn {
 			hand := make([]deck.Card, len(g.player))
