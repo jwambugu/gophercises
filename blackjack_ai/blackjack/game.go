@@ -1,6 +1,7 @@
 package blackjack
 
 import (
+	"errors"
 	"github.com/jwambugu/gophercises/deck"
 )
 
@@ -33,7 +34,11 @@ type (
 	}
 )
 
-type Move func(*Game)
+var (
+	errorBusted = errors.New("hand score exceeded 21")
+)
+
+type Move func(*Game) error
 
 func (g *Game) currentHand() *[]deck.Card {
 	switch g.state {
@@ -46,7 +51,7 @@ func (g *Game) currentHand() *[]deck.Card {
 	}
 }
 
-func MoveHit(g *Game) {
+func MoveHit(g *Game) error {
 	hand := g.currentHand()
 
 	var card deck.Card
@@ -55,12 +60,26 @@ func MoveHit(g *Game) {
 	*hand = append(*hand, card)
 
 	if Score(*hand...) > 21 {
-		MoveStand(g)
+		return errorBusted
 	}
+
+	return nil
 }
 
-func MoveStand(g *Game) {
+func MoveStand(g *Game) error {
 	g.state++
+	return nil
+}
+
+func MoveDouble(g *Game) error {
+	if len(g.player) != 2 {
+		return errors.New("can only double on a hand with two cards")
+	}
+	g.playerBet *= 2
+
+	_ = MoveHit(g)
+
+	return MoveStand(g)
 }
 
 func draw(cards []deck.Card) (deck.Card, []deck.Card) {
@@ -196,7 +215,17 @@ func (g *Game) Play(ai AI) int {
 			copy(hand, g.player)
 
 			move := ai.Play(hand, g.dealer[0])
-			move(g)
+
+			err := move(g)
+
+			switch err {
+			case errorBusted:
+				_ = MoveStand(g)
+			case nil:
+				// Nothing to do here
+			default:
+				panic(err)
+			}
 		}
 
 		for g.state == stateDealerTurn {
@@ -204,7 +233,7 @@ func (g *Game) Play(ai AI) int {
 			copy(hand, g.dealer)
 
 			move := g.dealerAI.Play(hand, g.dealer[0])
-			move(g)
+			_ = move(g)
 		}
 
 		endHand(g, ai)
