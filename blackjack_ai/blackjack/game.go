@@ -104,7 +104,7 @@ func MoveStand(g *Game) error {
 }
 
 func MoveDouble(g *Game) error {
-	if len(g.player) != 2 {
+	if len(*g.currentHand()) != 2 {
 		return errors.New("can only double on a hand with two cards")
 	}
 	g.playerBet *= 2
@@ -133,10 +133,10 @@ func deal(g *Game) {
 		g.dealer = append(g.dealer, card)
 	}
 
-	playerHand = []deck.Card{
-		{Rank: deck.Seven},
-		{Rank: deck.Seven},
-	}
+	//playerHand = []deck.Card{
+	//	{Rank: deck.Seven},
+	//	{Rank: deck.Seven},
+	//}
 
 	g.player = []hand{
 		{
@@ -234,6 +234,11 @@ func endRound(g *Game, ai AI) {
 
 func bet(g *Game, ai AI, shuffled bool) {
 	bet := ai.Bet(shuffled)
+
+	if bet < 100 {
+		panic("bet must be at least 100")
+	}
+
 	g.playerBet = bet
 }
 

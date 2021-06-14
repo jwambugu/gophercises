@@ -42,7 +42,7 @@ func (ai *dealerAI) Results(hands [][]deck.Card, dealer []deck.Card) {
 
 func (ai humanAI) Results(hands [][]deck.Card, dealer []deck.Card) {
 	fmt.Println("==FINAL HANDS==")
-	fmt.Println("Player:")
+	fmt.Print("Player:")
 
 	for _, h := range hands {
 		fmt.Println(" ", h)
