@@ -26,11 +26,11 @@ const (
 	ModePolygon
 )
 
-func primitive(inputFile, outfile string, numberOfShapes int, mode Mode) (string, error) {
-	primitiveArgsStr := fmt.Sprintf("-i %s -o %s -n %d -m %d", inputFile, outfile, numberOfShapes, mode)
-	primitiveArgs := strings.Fields(primitiveArgsStr)
+func primitive(inputFile, outfile string, numberOfShapes int, args ...string) (string, error) {
+	primitiveArgsStr := fmt.Sprintf("-i %s -o %s -n %d", inputFile, outfile, numberOfShapes)
+	args = append(strings.Fields(primitiveArgsStr), args...)
 
-	cmd := exec.Command("primitive", primitiveArgs...)
+	cmd := exec.Command("primitive", args...)
 
 	b, err := cmd.CombinedOutput()
 
@@ -62,6 +62,12 @@ func createTempFile(prefix, extension string) (*os.File, error) {
 // Transform takes the provided image and applies primitive transformation to it then returns a reader to the
 // resulting image
 func Transform(image io.Reader, extension string, numberOfShapes int, opts ...func() []string) (io.Reader, error) {
+	var args []string
+
+	for _, opt := range opts {
+		args = append(args, opt()...)
+	}
+
 	inputTempFile, err := createTempFile("input_", extension)
 
 	if err != nil {
@@ -82,7 +88,7 @@ func Transform(image io.Reader, extension string, numberOfShapes int, opts ...fu
 	}
 
 	// Run primitive
-	stdCombo, err := primitive(inputTempFile.Name(), outputTempFile.Name(), numberOfShapes, ModeCombo)
+	stdCombo, err := primitive(inputTempFile.Name(), outputTempFile.Name(), numberOfShapes, args...)
 
 	if err != nil {
 		return nil, fmt.Errorf("primitive: failed to run the primitive command: %v, std combo: %s", err, stdCombo)

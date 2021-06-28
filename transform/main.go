@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"github.com/jwambugu/gophercises/transform/primitive"
 	"io"
+	"io/ioutil"
 	"log"
 	"mime/multipart"
 	"net/http"
+	"os"
 	"path/filepath"
 )
 
@@ -19,6 +21,20 @@ func showUploadForm(w http.ResponseWriter, r *http.Request) {
 		</body></html>`
 
 	_, _ = fmt.Fprint(w, html)
+}
+
+func createTempFile(prefix, extension string) (*os.File, error) {
+	tempFile, err := ioutil.TempFile("./img", prefix)
+
+	if err != nil {
+		return nil, fmt.Errorf("main: failed to create temp input file:: %v", err)
+	}
+
+	defer func(name string) {
+		_ = os.Remove(name)
+	}(tempFile.Name())
+
+	return os.Create(fmt.Sprintf("%s.%s", tempFile.Name(), extension))
 }
 
 func uploadImage(w http.ResponseWriter, r *http.Request) {
@@ -36,26 +52,29 @@ func uploadImage(w http.ResponseWriter, r *http.Request) {
 	// Get the file extension
 	extension := filepath.Ext(header.Filename)[1:]
 
-	output, err := primitive.Transform(file, extension, 10)
+	output, err := primitive.Transform(file, extension, 50, primitive.WithMode(primitive.ModeRotatedRect))
 
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	switch extension {
-	case "jpg":
-		fallthrough
-	case "jpeg":
-		w.Header().Set("Content-Type", "image/jpeg")
-	case "png":
-		w.Header().Set("Content-Type", "image/png")
-	default:
-		http.Error(w, "Invalid image type", http.StatusBadRequest)
+	outputFile, err := createTempFile("", extension)
+
+	_, err = io.Copy(outputFile, output)
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	_, _ = io.Copy(w, output)
+	defer func(outputFile *os.File) {
+		_ = outputFile.Close()
+	}(outputFile)
+
+	redirectURL := fmt.Sprintf("/%s", outputFile.Name())
+
+	http.Redirect(w, r, redirectURL, http.StatusFound)
 }
 
 func main() {
@@ -63,6 +82,9 @@ func main() {
 
 	mux.HandleFunc("/", showUploadForm)
 	mux.HandleFunc("/upload", uploadImage)
+
+	fs := http.FileServer(http.Dir("./img/"))
+	mux.Handle("/img/", http.StripPrefix("/img", fs))
 
 	addr := ":3000"
 
