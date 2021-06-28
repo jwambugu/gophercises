@@ -27,8 +27,6 @@ const (
 )
 
 func primitive(inputFile, outfile string, numberOfShapes int, mode Mode) (string, error) {
-	fmt.Println(inputFile, outfile)
-
 	primitiveArgsStr := fmt.Sprintf("-i %s -o %s -n %d -m %d", inputFile, outfile, numberOfShapes, mode)
 	primitiveArgs := strings.Fields(primitiveArgsStr)
 
@@ -63,14 +61,14 @@ func createTempFile(prefix, extension string) (*os.File, error) {
 
 // Transform takes the provided image and applies primitive transformation to it then returns a reader to the
 // resulting image
-func Transform(image io.Reader, numberOfShapes int, opts ...func() []string) (io.Reader, error) {
-	inputTempFile, err := createTempFile("input_", "png")
+func Transform(image io.Reader, extension string, numberOfShapes int, opts ...func() []string) (io.Reader, error) {
+	inputTempFile, err := createTempFile("input_", extension)
 
 	if err != nil {
 		return nil, fmt.Errorf("primitive: failed to create temp input file:: %v", err)
 	}
 
-	outputTempFile, err := createTempFile("output_", "png")
+	outputTempFile, err := createTempFile("output_", extension)
 
 	if err != nil {
 		return nil, fmt.Errorf("primitive: failed to create temp output file:: %v", err)
