@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/jwambugu/gophercises/transform/primitive"
+	"html/template"
 	"io"
 	"io/ioutil"
 	"log"
@@ -37,6 +38,28 @@ func createTempFile(prefix, extension string) (*os.File, error) {
 	return os.Create(fmt.Sprintf("%s.%s", tempFile.Name(), extension))
 }
 
+func generateImage(file io.Reader, extension string, numberOfShapes int, mode primitive.Mode) (string, error) {
+	output, err := primitive.Transform(file, extension, numberOfShapes, primitive.WithMode(mode))
+
+	if err != nil {
+		return "", err
+	}
+
+	outputFile, err := createTempFile("", extension)
+
+	_, err = io.Copy(outputFile, output)
+
+	if err != nil {
+		return "", err
+	}
+
+	defer func(outputFile *os.File) {
+		_ = outputFile.Close()
+	}(outputFile)
+
+	return outputFile.Name(), nil
+}
+
 func uploadImage(w http.ResponseWriter, r *http.Request) {
 	file, header, err := r.FormFile("image")
 
@@ -52,29 +75,42 @@ func uploadImage(w http.ResponseWriter, r *http.Request) {
 	// Get the file extension
 	extension := filepath.Ext(header.Filename)[1:]
 
-	output, err := primitive.Transform(file, extension, 50, primitive.WithMode(primitive.ModeRotatedRect))
+	a, err := generateImage(file, extension, 33, primitive.ModeCircle)
 
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	outputFile, err := createTempFile("", extension)
+	_, _ = file.Seek(0, 0)
 
-	_, err = io.Copy(outputFile, output)
+	b, err := generateImage(file, extension, 10, primitive.ModeBeziers)
 
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	defer func(outputFile *os.File) {
-		_ = outputFile.Close()
-	}(outputFile)
+	_, _ = file.Seek(0, 0)
 
-	redirectURL := fmt.Sprintf("/%s", outputFile.Name())
+	html := `<html><body>
+		{{ range .}}
+			<img src="/{{.}}"> <br/> <br/>
+		{{ end }}
+	</body></html>`
 
-	http.Redirect(w, r, redirectURL, http.StatusFound)
+	tpl := template.Must(template.New("").Parse(html))
+
+	images := []string{a, b}
+
+	if err := tpl.Execute(w, images); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	//redirectURL := fmt.Sprintf("/%s", generatedImage)
+	//
+	//http.Redirect(w, r, redirectURL, http.StatusFound)
 }
 
 func main() {
