@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strings"
 	"time"
 )
@@ -57,41 +58,51 @@ func getTopStories(numStories int) ([]item, error) {
 		return nil, errors.New("failed to load top stories")
 	}
 
-	var stories []item
+	type result struct {
+		index int
+		item  item
+		err   error
+	}
 
-	for _, id := range ids {
-		type result struct {
-			item item
-			err  error
-		}
+	resultsCh := make(chan result)
 
-		resultsCh := make(chan result)
-
-		go func(id int) {
+	for i := 0; i < numStories; i++ {
+		go func(index, id int) {
 			hnItem, err := client.GetItem(id)
 			if err != nil {
 				resultsCh <- result{
-					err: err,
+					index: index,
+					err:   err,
 				}
 			}
 
 			resultsCh <- result{
-				item: parseHNItem(hnItem),
+				index: index,
+				item:  parseHNItem(hnItem),
 			}
-		}(id)
+		}(i, ids[i])
+	}
 
-		resultsChanData := <-resultsCh
+	var results []result
 
-		if resultsChanData.err != nil {
+	for i := 0; i < numStories; i++ {
+		results = append(results, <-resultsCh)
+	}
+
+	// Sort the items by index asc
+	sort.Slice(results, func(i, j int) bool {
+		return results[i].index < results[j].index
+	})
+
+	var stories []item
+
+	for _, r := range results {
+		if r.err != nil {
 			continue
 		}
 
-		if isStoryLink(resultsChanData.item) {
-			stories = append(stories, resultsChanData.item)
-
-			if len(stories) >= numStories {
-				break
-			}
+		if isStoryLink(r.item) {
+			stories = append(stories, r.item)
 		}
 	}
 
