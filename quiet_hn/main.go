@@ -50,13 +50,8 @@ func parseHNItem(hnItem hn.Item) item {
 	return ret
 }
 
-func getTopStories(numStories int) ([]item, error) {
+func getStories(ids []int) []item {
 	var client hn.Client
-
-	ids, err := client.TopItems()
-	if err != nil {
-		return nil, errors.New("failed to load top stories")
-	}
 
 	type result struct {
 		index int
@@ -66,7 +61,7 @@ func getTopStories(numStories int) ([]item, error) {
 
 	resultsCh := make(chan result)
 
-	for i := 0; i < numStories; i++ {
+	for i := 0; i < len(ids); i++ {
 		go func(index, id int) {
 			hnItem, err := client.GetItem(id)
 			if err != nil {
@@ -85,7 +80,7 @@ func getTopStories(numStories int) ([]item, error) {
 
 	var results []result
 
-	for i := 0; i < numStories; i++ {
+	for i := 0; i < len(ids); i++ {
 		results = append(results, <-resultsCh)
 	}
 
@@ -106,7 +101,28 @@ func getTopStories(numStories int) ([]item, error) {
 		}
 	}
 
-	return stories, nil
+	return stories
+}
+
+func getTopStories(numStories int) ([]item, error) {
+	var client hn.Client
+
+	ids, err := client.TopItems()
+	if err != nil {
+		return nil, errors.New("failed to load top stories")
+	}
+
+	var stories []item
+	currentPosition := 0
+
+	for len(stories) < numStories {
+		remainingStories := (numStories - len(stories)) * 5 / 4
+
+		stories = append(stories, getStories(ids[currentPosition:currentPosition+remainingStories])...)
+		currentPosition += remainingStories
+	}
+
+	return stories[:numStories], nil
 }
 
 func handler(numStories int, tpl *template.Template) http.HandlerFunc {
