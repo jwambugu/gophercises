@@ -29,6 +29,15 @@ type item struct {
 	Host string
 }
 
+type storyCache struct {
+	numStories int
+	cache      []item
+	useA       bool
+	expiration time.Time
+	duration   time.Duration
+	mutext     sync.Mutex
+}
+
 type templateData struct {
 	Stories []item
 	Time    time.Duration
@@ -112,25 +121,6 @@ func getStories(ids []int) []item {
 	return stories
 }
 
-func getCachedStories(numStories int) ([]item, error) {
-	cacheMutex.Lock()
-	defer cacheMutex.Unlock()
-
-	if time.Now().Sub(cacheExpiration) < 0 {
-		return cache, nil
-	}
-
-	stories, err := getTopStories(numStories)
-	if err != nil {
-		return nil, err
-	}
-
-	cache = stories
-	cacheExpiration = time.Now().Add(5 * time.Minute)
-
-	return cache, nil
-}
-
 func getTopStories(numStories int) ([]item, error) {
 	var client hn.Client
 
@@ -152,11 +142,55 @@ func getTopStories(numStories int) ([]item, error) {
 	return stories[:numStories], nil
 }
 
+func (sc *storyCache) stories() ([]item, error) {
+	sc.mutext.Lock()
+	defer sc.mutext.Unlock()
+
+	if time.Now().Sub(sc.expiration) < 0 {
+		return sc.cache, nil
+	}
+
+	stories, err := getTopStories(sc.numStories)
+	if err != nil {
+		return nil, err
+	}
+
+	sc.expiration = time.Now().Add(5 * time.Minute)
+	sc.cache = stories
+
+	return sc.cache, nil
+}
+
 func handler(numStories int, tpl *template.Template) http.HandlerFunc {
+	sc := &storyCache{
+		numStories: numStories,
+		duration:   5 * time.Minute,
+	}
+
+	go func() {
+		ticker := time.NewTicker(4 * time.Minute)
+		for {
+			temp := &storyCache{
+				numStories: numStories,
+				duration:   sc.duration * 2,
+			}
+
+			_, _ = temp.stories()
+
+			sc.mutext.Lock()
+			sc.cache = temp.cache
+			sc.expiration = temp.expiration
+			sc.mutext.Unlock()
+
+			//fmt.Printf("[*] cache has %d stories == %+v\n", len(sc.cache), sc.duration)
+			<-ticker.C
+		}
+	}()
+
 	return func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 
-		stories, err := getCachedStories(numStories)
+		stories, err := sc.stories()
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
