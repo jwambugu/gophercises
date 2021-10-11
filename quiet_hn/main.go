@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"github.com/jwambugu/gophercises/quiet_hn/hn"
@@ -36,42 +37,75 @@ func isStoryLink(item item) bool {
 }
 
 func parseHNItem(hnItem hn.Item) item {
-	ret := item{Item: hnItem}
-	url, err := url.Parse(ret.URL)
-	if err == nil {
-		ret.Host = strings.TrimPrefix(url.Hostname(), "www.")
+	ret := item{
+		Item: hnItem,
 	}
+
+	parsedURL, err := url.Parse(ret.URL)
+	if err == nil {
+		ret.Host = strings.TrimPrefix(parsedURL.Hostname(), "www.")
+	}
+
 	return ret
+}
+
+func getTopStories(numStories int) ([]item, error) {
+	var client hn.Client
+
+	ids, err := client.TopItems()
+	if err != nil {
+		return nil, errors.New("failed to load top stories")
+	}
+
+	var stories []item
+
+	for _, id := range ids {
+		type result struct {
+			item item
+			err  error
+		}
+
+		resultsCh := make(chan result)
+
+		go func(id int) {
+			hnItem, err := client.GetItem(id)
+			if err != nil {
+				resultsCh <- result{
+					err: err,
+				}
+			}
+
+			resultsCh <- result{
+				item: parseHNItem(hnItem),
+			}
+		}(id)
+
+		resultsChanData := <-resultsCh
+
+		if resultsChanData.err != nil {
+			continue
+		}
+
+		if isStoryLink(resultsChanData.item) {
+			stories = append(stories, resultsChanData.item)
+
+			if len(stories) >= numStories {
+				break
+			}
+		}
+	}
+
+	return stories, nil
 }
 
 func handler(numStories int, tpl *template.Template) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 
-		var client hn.Client
-
-		ids, err := client.TopItems()
+		stories, err := getTopStories(numStories)
 		if err != nil {
-			http.Error(w, "Failed to load top stories", http.StatusInternalServerError)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
-		}
-
-		var stories []item
-
-		for _, id := range ids {
-			hnItem, err := client.GetItem(id)
-			if err != nil {
-				continue
-			}
-
-			item := parseHNItem(hnItem)
-			if isStoryLink(item) {
-				stories = append(stories, item)
-
-				if len(stories) >= numStories {
-					break
-				}
-			}
 		}
 
 		data := templateData{
